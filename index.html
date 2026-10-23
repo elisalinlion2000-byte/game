@@ -247,12 +247,13 @@ var Engine = (function () {
 
   function newRoom(code) {
     return {
-      code: code, v: 1, phase: 'lobby', step: 'guess', turn: 'pink', round: 1, guess: null,
+      code: code, v: 1, phase: 'lobby', step: 'guess', round: 1,
+      guesses: { pink: null, blue: null },
       players: { pink: null, blue: null },
       poison: { pink: null, blue: null },
       result: null, card: null,
-      ack: { pink: false, blue: false },
-      rerolled: false,
+      ack: { pink: null, blue: null },
+      spank: null,
       used: { truth: [], dare: [] },
       made: Date.now()
     };
@@ -265,11 +266,11 @@ var Engine = (function () {
       pl[r] = room.players[r] ? { name: room.players[r].name } : null;
     });
     return {
-      code: room.code, v: room.v, phase: room.phase, step: room.step, turn: room.turn,
-      round: room.round, guess: room.guess, rerolled: room.rerolled,
+      code: room.code, v: room.v, phase: room.phase, step: room.step,
+      round: room.round, guesses: room.guesses,
       players: pl, me: role,
       poisonDone: { pink: !!room.poison.pink, blue: !!room.poison.blue },
-      result: room.result, card: room.card, ack: room.ack
+      result: room.result, card: room.card, ack: room.ack, spank: room.spank
     };
   }
 
@@ -277,6 +278,15 @@ var Engine = (function () {
     room.v = (room.v || 0) + 1;
     io.save(room.code, room);
     return { ok: true, view: viewOf(room, role) };
+  }
+
+  function nextRound(room) {
+    room.round += 1;
+    room.step = 'guess';
+    room.guesses = { pink: null, blue: null };
+    room.result = null; room.card = null;
+    room.ack = { pink: null, blue: null };
+    room.spank = null;
   }
 
   function makeCode(io) {
@@ -354,18 +364,19 @@ var Engine = (function () {
       room.poison[role] = nums;
       if (room.poison.pink && room.poison.blue) {
         room.phase = 'play'; room.step = 'guess';
-        room.turn = rand(2) ? 'pink' : 'blue';
-        room.round = 1; room.guess = null; room.result = null; room.card = null;
-        room.ack = { pink: false, blue: false };
+        room.round = 1; room.guesses = { pink: null, blue: null }; room.result = null; room.card = null;
+        room.ack = { pink: null, blue: null }; room.spank = null;
       }
       return commit(room, io, role);
     }
 
     if (a === 'guess') {
-      if (room.phase !== 'play' || room.step !== 'guess') return fail('現在不是猜顏色的時間');
-      if (room.turn !== role) return fail('還沒輪到你');
-      if (p.color !== 'red' && p.color !== 'black') return fail('只能猜紅色或黑色');
-      room.guess = p.color; room.step = 'spin';
+      if (room.phase !== 'play' || room.step !== 'guess') return fail('現在不是選顏色的時間');
+      if (p.color !== 'red' && p.color !== 'black') return fail('只能選紅色或黑色');
+      if (room.guesses[role]) return fail('你已經選過顏色了');
+      if (room.guesses[other(role)] === p.color) return fail('另一半已經選了這個顏色,請選另一個');
+      room.guesses[role] = p.color;
+      if (room.guesses.pink && room.guesses.blue) room.step = 'spin';
       return commit(room, io, role);
     }
 
@@ -374,41 +385,37 @@ var Engine = (function () {
       var n = Number(p.number);
       if (!isInt037(n)) return fail('號碼要是 0~36');
       var c = colorOf(n);
-      var correct = c === room.guess;
-      var owner = other(room.turn);
-      var hit = room.poison[owner].indexOf(n) >= 0;
-      var drink = hit && !correct;
-      room.result = {
-        number: n, color: c, correct: correct, hit: hit, drink: drink,
-        guesser: room.turn, guess: room.guess, owner: owner
-      };
+      var losers = ['pink', 'blue'].filter(function (r) { return room.guesses[r] !== c; });
+      room.result = { number: n, color: c, losers: losers, guesses: { pink: room.guesses.pink, blue: room.guesses.blue } };
       room.card = pickCard(room, deck, rand(2) ? 'truth' : 'dare', -1);
-      room.ack = { pink: false, blue: false };
-      room.rerolled = false;
+      room.ack = { pink: null, blue: null };
       room.step = 'card';
-      return commit(room, io, role);
-    }
-
-    if (a === 'reroll') {
-      if (room.phase !== 'play' || room.step !== 'card') return fail('現在不能換題');
-      if (room.rerolled) return fail('這回合已經換過一次了');
-      var type = rand(2) ? 'truth' : 'dare';
-      room.card = pickCard(room, deck, type, type === room.card.type ? room.card.idx : -1);
-      room.ack = { pink: false, blue: false };
-      room.rerolled = true;
       return commit(room, io, role);
     }
 
     if (a === 'ack') {
       if (room.phase !== 'play' || room.step !== 'card') return fail('現在不能按完成');
-      room.ack[role] = true;
+      if (room.ack[role]) return fail('你已經回覆過了');
+      room.ack[role] = p.pass ? 'pass' : 'done';
       if (room.ack.pink && room.ack.blue) {
-        room.turn = other(room.turn);
-        room.round += 1;
-        room.step = 'guess';
-        room.guess = null; room.result = null; room.card = null;
-        room.ack = { pink: false, blue: false };
+        var passers = ['pink', 'blue'].filter(function (r) { return room.ack[r] === 'pass'; });
+        if (passers.length) {
+          room.step = 'spank';
+          room.spank = { passers: passers, count: 3 + rand(6), done: { pink: false, blue: false } };
+        } else {
+          nextRound(room);
+        }
       }
+      return commit(room, io, role);
+    }
+
+    if (a === 'spankdone') {
+      if (room.phase !== 'play' || room.step !== 'spank') return fail('現在不是打屁股時間');
+      var needs = room.spank.passers.map(other);
+      if (needs.indexOf(role) < 0) return fail('輪不到你打');
+      room.spank.done[role] = true;
+      var all = needs.every(function (r) { return room.spank.done[r]; });
+      if (all) nextRound(room);
       return commit(room, io, role);
     }
 
@@ -416,8 +423,8 @@ var Engine = (function () {
       if (!(room.players.pink && room.players.blue)) return fail('另一半還沒加入');
       room.phase = 'poison'; room.step = 'guess'; room.round = 1;
       room.poison = { pink: null, blue: null };
-      room.guess = null; room.result = null; room.card = null;
-      room.ack = { pink: false, blue: false }; room.rerolled = false;
+      room.guesses = { pink: null, blue: null }; room.result = null; room.card = null;
+      room.ack = { pink: null, blue: null }; room.spank = null;
       room.used = { truth: [], dare: [] };
       return commit(room, io, role);
     }
@@ -526,10 +533,9 @@ function numGrid(selected, act) {
   return h + `</div>`;
 }
 function chips(v) {
-  const t = v.phase === 'play' ? v.turn : null;
   return `<div class="chips">${['pink', 'blue'].map(r => {
     const p = v.players[r];
-    return `<div class="chip ${r} ${t === r ? 'on' : ''}">${face(r)}<span>${p ? esc(p.name) : '等待中…'}</span>${v.me === r ? '<i>我</i>' : ''}</div>`;
+    return `<div class="chip ${r} on">${face(r)}<span>${p ? esc(p.name) : '等待中…'}</span>${v.me === r ? '<i>我</i>' : ''}</div>`;
   }).join('')}</div>`;
 }
 const nm = (v, r) => esc(v.players[r] ? v.players[r].name : roleName[r]);
@@ -591,23 +597,32 @@ function screenPoison(v) {
 }
 
 function screenPlay(v) {
-  const me = v.me, t = v.turn, mine = t === me;
+  const me = v.me, pa = other(me);
   let body = '';
   if (v.step === 'guess') {
-    body = mine ? `
-      <div class="crayon yellow center pop"><h2>輪到你啦!</h2><p>猜猜珠子會停在哪個顏色?</p></div>
-      <div class="row">
-        <button class="crayon red" data-act="guess" data-c="red" style="font-size:30px;padding:26px 10px">紅色</button>
-        <button class="crayon black" data-act="guess" data-c="black" style="font-size:30px;padding:26px 10px">黑色</button>
-      </div>` : `
-      <div class="crayon paper center"><h2>${nm(v, t)} 正在猜顏色…</h2></div>
+    const mine = v.guesses[me], theirs = v.guesses[pa];
+    if (mine) {
+      body = `
+      <div class="crayon yellow center pop"><p>你選了</p><h2 style="font-size:34px">${colorName[mine]}</h2></div>
+      <div class="crayon paper center"><p>等 ${nm(v, pa)} 選顏色…</p></div>
       ${wheel('big spin')}`;
+    } else {
+      const btn = (c) => {
+        const taken = theirs === c;
+        return `<button class="crayon ${c}" data-act="guess" data-c="${c}" ${taken ? 'disabled' : ''} style="font-size:30px;padding:26px 10px">${colorName[c]}${taken ? `<span style="display:block;font-size:14px">${nm(v, pa)} 選走了</span>` : ''}</button>`;
+      };
+      body = `
+      <div class="crayon yellow center pop"><h2>選一個顏色!</h2><p>${theirs ? `${nm(v, pa)} 已經選了${colorName[theirs]},你只能選另一個` : '兩個人要選不一樣的顏色,先選先贏'}</p></div>
+      <div class="row">${btn('red')}${btn('black')}</div>`;
+    }
   } else if (v.step === 'spin') {
     body = `
-      <div class="crayon yellow center pop"><p>${nm(v, t)} 猜了</p><h2 style="font-size:34px">${colorName[v.guess]}</h2></div>
+      <div class="row">${['pink', 'blue'].map(r => `<div class="crayon ${r} center" style="padding:8px 6px"><p style="font-size:15px">${nm(v, r)}</p><h2 style="font-size:24px">${colorName[v.guesses[r]]}</h2></div>`).join('')}</div>
       <div class="crayon paper center"><p>現在轉實體輪盤、丟珠子!<br>珠子停下來後,<b>任一人</b>選號碼</p></div>
       ${numGrid(ui.spin == null ? [] : [ui.spin], 'pickn')}
       <button class="crayon orange" data-act="spin" ${ui.spin == null ? 'disabled' : ''}>${ui.spin == null ? '先點珠子停的號碼' : '珠子停在 ' + ui.spin + ' 號!'}</button>`;
+  } else if (v.step === 'spank') {
+    body = screenSpank(v);
   } else {
     body = screenCard(v);
   }
@@ -620,27 +635,50 @@ function screenPlay(v) {
 }
 
 function screenCard(v) {
-  const r = v.result, c = v.card, me = v.me;
-  const g = nm(v, r.guesser), ow = nm(v, r.owner);
+  const r = v.result, c = v.card, me = v.me, pa = other(me);
+  const names = r.losers.map(x => nm(v, x)).join('、');
   let verdict;
-  if (r.drink) verdict = `<div class="crayon red center shake"><h2>☠ 中毒!</h2><p>${g} 猜錯了,又踩到 ${ow} 的毒藥<br>請喝掉 <b>${r.number} 號杯</b></p></div>`;
-  else if (r.hit && r.correct) verdict = `<div class="crayon green center pop"><h2>逃過一劫!</h2><p>${r.number} 號杯是 ${ow} 的毒藥,<br>但 ${g} 猜對顏色,不用喝</p></div>`;
-  else if (r.color === 'green') verdict = `<div class="crayon paper center pop"><h2>綠色 0!</h2><p>這次一定猜錯,但這杯是安全的</p></div>`;
-  else if (r.correct) verdict = `<div class="crayon green center pop"><h2>${g} 猜對了!</h2><p>這杯很安全,不用喝</p></div>`;
-  else verdict = `<div class="crayon paper center pop"><h2>${g} 猜錯了…</h2><p>不過這杯沒毒,不用喝</p></div>`;
+  if (r.losers.length === 2) verdict = `<div class="crayon orange center pop"><h2>兩個人都猜錯!</h2><p>請一起拿起 <b>${r.number} 號杯</b>,杯子裡有什麼就喝什麼</p></div>`;
+  else {
+    const L = r.losers[0], W = other(L);
+    verdict = `<div class="crayon ${L === 'pink' ? 'pink' : 'blue'} center pop"><h2>${nm(v, L)} 猜錯了</h2><p>請拿起 <b>${r.number} 號杯</b>,杯子裡有什麼就喝什麼<br><span class="small" style="opacity:1">${nm(v, W)} 猜對了,不用喝</span></p></div>`;
+  }
   const isT = c.type === 'truth';
-  const done = v.ack[me];
+  const mineAck = v.ack[me], theirAck = v.ack[pa];
+  const label = x => x === 'pass' ? 'PASS' : x === 'done' ? '✓' : '…';
+  const passBanner = theirAck === 'pass' ? `<div class="crayon orange center pop"><p>${nm(v, pa)} 選擇 PASS!<br>最後要打 ${nm(v, pa)} 的屁股,記得喔</p></div>` : '';
+  let actions;
+  if (mineAck) {
+    actions = `<button class="crayon paper" disabled>${mineAck === 'pass' ? '你 PASS 了,等另一半…' : '等另一半完成…'}</button>`;
+  } else {
+    actions = `<button class="crayon green" data-act="ack">我完成了!</button>
+      <button class="crayon orange" data-act="pass" style="font-size:17px;padding:10px">我不做,PASS(要被對方打屁股)</button>`;
+  }
   return `
     <div class="center"><div class="ball ${r.color} pop">${r.number}</div></div>
     ${verdict}
-    <div class="crayon ${isT ? 'pink' : 'blue'} paper center pop" style="--fill:${isT ? '#ffe3ef' : '#e0f1ff'}">
+    <div class="crayon pink paper center pop" style="--fill:${isT ? '#ffe3ef' : '#e0f1ff'}">
       <span class="tag">${isT ? '真心話' : '大冒險'}</span>
       <p class="card-text">${esc(c.text)}</p>
       <p class="small" style="opacity:1">不管猜對猜錯,<b>兩個人都要完成</b>喔!</p>
     </div>
-    <div class="dots"><span class="dot pink ${v.ack.pink ? 'done' : ''}">${nm(v, 'pink')} ${v.ack.pink ? '✓' : '…'}</span><span class="dot blue ${v.ack.blue ? 'done' : ''}">${nm(v, 'blue')} ${v.ack.blue ? '✓' : '…'}</span></div>
-    <button class="crayon ${done ? 'paper' : 'green'}" data-act="ack" ${done ? 'disabled' : ''}>${done ? '等另一半完成…' : '我完成了!'}</button>
-    ${v.rerolled ? '' : '<div class="center"><button class="link" data-act="reroll">這題太超過,換一題(每回合一次)</button></div>'}`;
+    ${passBanner}
+    <div class="dots"><span class="dot pink ${v.ack.pink ? 'done' : ''}">${nm(v, 'pink')} ${label(v.ack.pink)}</span><span class="dot blue ${v.ack.blue ? 'done' : ''}">${nm(v, 'blue')} ${label(v.ack.blue)}</span></div>
+    ${actions}`;
+}
+
+function screenSpank(v) {
+  const me = v.me, sp = v.spank;
+  const lines = sp.passers.map(x => {
+    const hitter = other(x);
+    const done = sp.done[hitter];
+    return `<div class="crayon ${x === 'pink' ? 'pink' : 'blue'} center pop"><h2>${nm(v, x)} PASS 了</h2><p>${nm(v, hitter)} 要打 ${nm(v, x)} 的屁股 <b>${sp.count} 下</b><br>${done ? '打完囉 ✓' : '打完請按下面的按鈕'}</p></div>`;
+  }).join('');
+  const myJob = sp.passers.map(other).includes(me) && !sp.done[me];
+  return `
+    <div class="crayon yellow center pop"><h2>打屁股時間!</h2></div>
+    ${lines}
+    ${myJob ? `<button class="crayon green" data-act="spankdone">我打完了!</button>` : `<button class="crayon paper" disabled>等對方打完…</button>`}`;
 }
 
 function render() {
@@ -681,7 +719,8 @@ document.addEventListener('click', async e => {
   else if (a === 'pickn') { ui.spin = +el.dataset.n; render(); }
   else if (a === 'spin') call('spin', { number: ui.spin });
   else if (a === 'ack') call('ack');
-  else if (a === 'reroll') call('reroll');
+  else if (a === 'pass') { if (confirm('PASS 的話,等一下要被另一半打屁股喔,確定嗎?')) call('ack', { pass: true }); }
+  else if (a === 'spankdone') call('spankdone');
   else if (a === 'restart') { if (confirm('要重新選毒藥、從第 1 回合開始嗎?')) call('restart'); }
   else if (a === 'leave') { if (confirm('要離開這個房間嗎?')) { clearSession(); render(); } }
 });
