@@ -338,13 +338,19 @@ var Engine = (function () {
     if (!code) return fail('請輸入房號');
     var room = io.load(code);
     if (!room) return fail('找不到這個房號');
-    if (!validRole(role)) return fail('身分不對');
+    // 身分遺失時,用裝置代號自動找回是粉色還是藍色
+    if (!validRole(role) && a !== 'join') {
+      if (room.players.pink && room.players.pink.token === token) role = 'pink';
+      else if (room.players.blue && room.players.blue.token === token) role = 'blue';
+    }
+    if (!validRole(role)) return fail('找不到你的身分,請按「離開房間」後,重新選粉色或藍色再加入');
 
     if (a === 'join') {
       var jn = cleanName(p.name);
       if (!jn) return fail('請輸入綽號');
       var slot = room.players[role];
-      if (slot && slot.token !== token) return fail('這個顏色已經有人了,換另一個顏色吧');
+      // 同一個綽號重新進來(換手機、清掉瀏覽資料)視為同一個人,可以接回原本的位置
+      if (slot && slot.token !== token && slot.name !== jn) return fail('這個顏色已經有人了,換另一個顏色,或輸入原本的綽號接回來');
       room.players[role] = { name: jn, token: token };
       if (room.players.pink && room.players.blue && room.phase === 'lobby') room.phase = 'poison';
       return commit(room, io, role);
@@ -449,6 +455,7 @@ const $app = document.getElementById('app');
 
 let S = {};
 try { S = JSON.parse(store.getItem('crayon-session') || '{}'); } catch (e) { S = {}; }
+if (S.role !== 'pink' && S.role !== 'blue') { S = {}; try { store.removeItem('crayon-session'); } catch (e) {} }
 let view = null, busy = false, booted = false;
 const ui = { role: S.role || '', name: S.name || '', joinCode: '', picks: [], repick: false, spin: null };
 
@@ -480,8 +487,15 @@ async function call(action, extra) {
   busy = true;
   try {
     const p = Object.assign({ action, code: S.code, role: S.role, token: S.token }, extra || {});
+    if (action !== 'create' && action !== 'join' && (!p.code || (p.role !== 'pink' && p.role !== 'blue'))) {
+      clearSession(); render(); toast('連線資訊遺失了,請重新選顏色再加入'); return null;
+    }
     const r = await send(p);
-    if (!r.ok) { toast(r.error || '出了點小問題'); return r; }
+    if (!r.ok) {
+      if (/找不到你的身分/.test(r.error || '')) { clearSession(); render(); }
+      toast(r.error || '出了點小問題'); return r;
+    }
+    if (r.view && r.view.me && r.view.me !== S.role && S.code) { S.role = r.view.me; saveSession(); }
     view = r.view; render();
     return r;
   } catch (e) {
@@ -491,10 +505,11 @@ async function call(action, extra) {
 }
 async function tick() {
   if (!S.code || busy) return;
+  if (S.role !== 'pink' && S.role !== 'blue') { clearSession(); render(); return; }
   try {
     const r = await send({ action: 'get', code: S.code, role: S.role, token: S.token });
     if (r.ok) { if (!view || r.view.v !== view.v) { view = r.view; render(); } }
-    else if (/找不到|不在這個房間/.test(r.error || '')) { clearSession(); render(); toast('這個房間已經結束了'); }
+    else if (/找不到|不在這個房間|身分/.test(r.error || '')) { clearSession(); render(); toast('這個房間已經結束了'); }
   } catch (e) { /* 網路不穩就等下一輪 */ }
 }
 window.addEventListener('storage', e => { if (LOCAL && e.key === 'crayon-rooms') tick(); });
@@ -559,6 +574,7 @@ function screenHome() {
       <button class="crayon green" data-act="join" style="flex:1">加入</button>
     </div>
     <p class="small">限成人遊玩。喝的東西請適量,有人不舒服就喊停,換成白開水。</p>
+    <p class="small" style="font-size:12px;opacity:.5">版本 v4・10/23 晚間</p>
   </div>`;
 }
 
