@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fff4dc">
+<title>毒藥輪盤・真心話大冒險</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Iansui&family=Zen+Maru+Gothic:wght@500;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fff4dc; --ink:#4a3b32;
+  --pink:#ff8fb8; --pink-d:#e0558a; --blue:#6bb8f2; --blue-d:#2f86cf;
+  --red:#ee4b4b; --black:#454545; --green:#5fbf62; --yellow:#ffd84d; --orange:#ffa94d;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 -2.4 1.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --paper-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .4 0 0 0 0 .25 0 0 0 -1.6 .95'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{
+  background:var(--paper);
+  background-image:var(--paper-grain);
+  color:var(--ink);
+  font-family:'Iansui','Zen Maru Gothic','PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;
+  font-size:18px;line-height:1.5;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+#app{max-width:480px;margin:0 auto;padding:18px 18px 40px;position:relative;z-index:1}
+h1,h2,h3,p{margin:0}
+.center{text-align:center}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;gap:12px}
+.row>*{flex:1}
+.small{font-size:14px;opacity:.75}
+.hide{display:none!important}
+
+/* ---------- 蠟筆框框 ---------- */
+.crayon{position:relative;isolation:isolate;padding:14px 18px;--fill:#fff;--line:var(--ink);color:var(--ink)}
+.crayon::before,.crayon::after{content:"";position:absolute;z-index:-1;pointer-events:none;
+  border-radius:26px 20px 28px 18px / 20px 28px 18px 26px;filter:url(#wob)}
+.crayon::before{inset:0;background:var(--fill);border:4px solid var(--line)}
+.crayon::after{inset:4px;background-image:var(--grain);opacity:.6;border-radius:22px 16px 24px 14px / 16px 24px 14px 22px}
+.crayon.pink{--fill:var(--pink)} .crayon.blue{--fill:var(--blue)}
+.crayon.red{--fill:var(--red);color:#fff} .crayon.black{--fill:var(--black);color:#fff}
+.crayon.green{--fill:var(--green)} .crayon.yellow{--fill:var(--yellow)}
+.crayon.orange{--fill:var(--orange)} .crayon.paper{--fill:#fffaf0}
+
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+button.crayon{display:block;width:100%;font-size:21px;padding:14px 18px;text-align:center;transition:transform .12s}
+button.crayon:active{transform:translateY(3px) rotate(-.6deg)}
+button.crayon[disabled]{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:4px dashed var(--orange);outline-offset:4px;border-radius:12px}
+@media (hover:hover){button.crayon:not([disabled]):hover{transform:rotate(-.8deg) scale(1.02)}}
+
+input{font:inherit;color:inherit;width:100%;border:0;background:transparent;text-align:center;font-size:22px;padding:2px 0}
+input::placeholder{color:rgba(74,59,50,.4)}
+.field{display:block}
+
+/* ---------- 標題 ---------- */
+.title{font-family:'Zen Maru Gothic','Iansui',sans-serif;font-weight:900;font-size:46px;line-height:1.05;letter-spacing:2px;margin:8px 0 2px}
+.title span{display:inline-block}
+.title span:nth-child(1){color:var(--red);transform:rotate(-5deg)}
+.title span:nth-child(2){color:var(--orange);transform:rotate(3deg) translateY(2px)}
+.title span:nth-child(3){color:#e0b400;transform:rotate(-3deg)}
+.title span:nth-child(4){color:var(--green);transform:rotate(4deg)}
+.title span:nth-child(5){color:var(--blue-d);transform:rotate(-4deg) translateY(2px)}
+.title span:nth-child(6){color:var(--pink-d);transform:rotate(3deg)}
+.sub{font-size:20px;margin-bottom:6px}
+
+.wheel{width:150px;height:150px;display:block;margin:6px auto}
+.wheel.big{width:190px;height:190px}
+.wheel.spin{animation:spin 7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- 角色選擇 ---------- */
+button.crayon.pick{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;font-size:20px}
+.pick svg{width:64px;height:64px}
+.pick.on{transform:scale(1.06) rotate(-1deg)}
+.pick.on::before{border-width:6px;border-style:dashed}
+.pick .tick{height:22px;font-size:16px}
+
+/* ---------- 抬頭小卡 ---------- */
+.chips{display:flex;gap:10px;margin-bottom:6px}
+.chip{flex:1;display:flex;align-items:center;gap:8px;padding:6px 10px;min-width:0;
+  border:4px solid var(--ink);border-radius:22px 16px 24px 14px/16px 24px 14px 22px;
+  background:var(--c);background-image:var(--grain);opacity:.55;transition:transform .2s,opacity .2s}
+.chip.pink{--c:var(--pink)} .chip.blue{--c:var(--blue)}
+.chip.on{opacity:1;transform:scale(1.05) rotate(-1.5deg)}
+.chip svg{width:34px;height:34px;flex:none}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px}
+.chip i{font-style:normal;font-size:12px;background:#fff;border-radius:10px;padding:0 6px;margin-left:auto}
+.round{font-size:15px;opacity:.7;text-align:center}
+
+/* ---------- 號碼盤 ---------- */
+.nums{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.num{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;
+  background:var(--c);background-image:var(--grain);
+  border:3.5px solid var(--ink);border-radius:50% 46% 52% 48%/48% 52% 46% 50%;position:relative;
+  text-shadow:0 1px 0 rgba(0,0,0,.25);transition:transform .1s}
+.num:nth-child(3n){transform:rotate(3deg)} .num:nth-child(3n+1){transform:rotate(-4deg)}
+.num.red{--c:var(--red)} .num.black{--c:var(--black)} .num.green{--c:var(--green)}
+.num.zero{grid-column:1/-1;aspect-ratio:auto;height:46px;border-radius:30px 24px 32px 22px/24px 32px 22px 30px;transform:none}
+.num.sel{transform:scale(1.18) rotate(0);z-index:2;border-color:var(--ink);box-shadow:0 0 0 5px var(--yellow)}
+.num.sel::after{content:"★";position:absolute;top:-12px;right:-6px;font-size:20px;color:#e0b400;text-shadow:0 0 0 var(--ink),1px 1px 0 var(--ink)}
+
+/* ---------- 其他區塊 ---------- */
+.big-code{font-family:'Zen Maru Gothic',sans-serif;font-weight:900;font-size:54px;letter-spacing:10px;text-indent:10px;line-height:1.1}
+.bounce{animation:bounce 1.4s ease-in-out infinite}
+@keyframes bounce{50%{transform:translateY(-8px)}}
+.pop{animation:pop .45s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes pop{from{transform:scale(.3) rotate(-20deg);opacity:0}}
+.shake{animation:shake .5s 2}
+@keyframes shake{25%{transform:translateX(-6px) rotate(-1deg)}75%{transform:translateX(6px) rotate(1deg)}}
+
+.ball{width:96px;height:96px;margin:4px auto;display:flex;align-items:center;justify-content:center;
+  font-family:'Zen Maru Gothic',sans-serif;font-weight:900;font-size:44px;color:#fff;
+  background:var(--c);background-image:var(--grain);border:5px solid var(--ink);
+  border-radius:50% 46% 52% 48%/48% 52% 46% 50%}
+.ball.red{--c:var(--red)} .ball.black{--c:var(--black)} .ball.green{--c:var(--green)}
+
+.tag{display:inline-block;padding:2px 14px;border:3.5px solid var(--ink);border-radius:20px 14px 22px 12px/14px 22px 12px 20px;font-size:18px;background:var(--yellow)}
+.card-text{font-size:25px;line-height:1.45;margin:10px 0 4px}
+.dots{display:flex;gap:8px;justify-content:center}
+.dot{padding:2px 12px;border:3px solid var(--ink);border-radius:16px;font-size:15px;background:#fff;opacity:.5}
+.dot.pink{background:var(--pink)} .dot.blue{background:var(--blue)} .dot.done{opacity:1}
+.link{font-size:15px;text-decoration:underline wavy;text-underline-offset:5px;opacity:.75;padding:6px}
+.foot{display:flex;justify-content:center;gap:18px;margin-top:6px}
+
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,40px);opacity:0;
+  background:#fffaf0;border:4px solid var(--ink);border-radius:22px 16px 24px 14px/16px 24px 14px 22px;padding:10px 18px;
+  max-width:88vw;z-index:50;transition:all .25s;pointer-events:none;font-size:17px;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+.doodle{position:fixed;z-index:0;pointer-events:none;opacity:.5}
+.doodle.a{left:-14px;top:16%;width:70px;transform:rotate(-14deg)}
+.doodle.b{right:-10px;top:38%;width:64px;transform:rotate(12deg)}
+.doodle.c{left:-8px;bottom:9%;width:72px;transform:rotate(8deg)}
+.doodle.d{right:4px;top:3%;width:56px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:360px){.title{font-size:38px}.nums{gap:6px}.num{font-size:17px}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="5"/>
+  </filter>
+</defs></svg>
+
+<svg class="doodle a" viewBox="0 0 60 60" aria-hidden="true"><g filter="url(#wob)" fill="#ff8fb8" stroke="#4a3b32" stroke-width="3" stroke-linejoin="round"><path d="M30 52C8 36 6 20 16 13c6-4 12-1 14 5 2-6 8-9 14-5 10 7 8 23-14 39z"/></g></svg>
+<svg class="doodle b" viewBox="0 0 60 60" aria-hidden="true"><g filter="url(#wob)" fill="#ffd84d" stroke="#4a3b32" stroke-width="3" stroke-linejoin="round"><path d="M30 6l7 16 17 2-13 12 4 17-15-9-15 9 4-17L6 24l17-2z"/></g></svg>
+<svg class="doodle c" viewBox="0 0 60 60" aria-hidden="true"><g filter="url(#wob)" fill="#6bb8f2" stroke="#4a3b32" stroke-width="3" stroke-linejoin="round"><path d="M16 42a10 10 0 0 1 2-19 14 14 0 0 1 26 3 8 8 0 0 1-2 16z"/></g></svg>
+<svg class="doodle d" viewBox="0 0 60 60" aria-hidden="true"><g filter="url(#wob)" fill="none" stroke="#ee4b4b" stroke-width="4" stroke-linecap="round"><path d="M6 36c6-14 10 14 16 0s10 14 16 0 10 14 16 0"/></g></svg>
+
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+var Engine = (function () {
+  // ===== 輪盤紅色號碼 =====
+  var RED_NUMS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+  // ===== 預設題庫(Google Sheet 的 Questions 分頁沒資料時會用這份) =====
+  var DECK = {
+    truth: [
+      '第一次見到我,你心裡的第一個想法是什麼?',
+      '我身上哪個地方你最想一直摸?',
+      '如果可以讀我的心一分鐘,你最想知道我在想什麼?',
+      '交往以來,你對我說過最大的善意謊言是什麼?',
+      '我們哪一次約會最讓你心動?為什麼?',
+      '你有沒有幻想過我們一起變老的樣子?說說看。',
+      '我做什麼小動作最讓你心動?',
+      '我做什麼事最讓你想翻白眼?',
+      '你有沒有偷偷吃醋過?為了誰或什麼事?',
+      '吵架時,你覺得我們誰比較會先低頭?',
+      '你手機裡有幾張我的醜照?最醜的是哪張?',
+      '你有沒有偷偷練習過怎麼跟我撒嬌?',
+      '說出一件你一直想跟我做,但還沒開口的事。',
+      '你覺得我哪個眼神最犯規?',
+      '吵架後,你最希望我先說哪一句話?',
+      '你有沒有夢到過我?夢到什麼?',
+      '我睡覺的時候,最可愛(或最好笑)的地方是什麼?',
+      '幫我的吻技打 1~10 分,並說明理由。',
+      '朋友圈裡你覺得誰最帥或最美?(不能說我)',
+      '你最想跟我一起去哪裡約會?',
+      '你有沒有因為想我而什麼事都做不下去?',
+      '我說過的哪一句話曾經讓你超感動?',
+      '在一起之後,你覺得自己哪裡變了?',
+      '如果今晚只能做一件事,你想跟我做什麼?',
+      '你覺得我最性感的瞬間是什麼時候?',
+      '你有沒有偷偷模仿過我的口頭禪?模仿一下。',
+      '你最想對我說,但一直沒說出口的一句話是什麼?',
+      '如果我消失一天,你最想念我的什麼?',
+      '你覺得我們最有默契的一件事是什麼?',
+      '說一個你對我的小秘密,是我現在還不知道的。'
+    ],
+    dare: [
+      '在對方耳邊,用最撩人的聲音說一句情話。',
+      '輕輕親對方的脖子,停留 3 秒,不准笑。',
+      '用最誘惑的聲音唸一段天氣預報,不准笑場。',
+      '用眼神勾引對方 10 秒,不准笑場。',
+      '幫對方按摩肩頸 2 分鐘。',
+      '嘴對嘴傳一顆糖果(或餅乾)給對方。',
+      '對著對方跳 20 秒性感舞蹈。',
+      '閉上眼睛,讓對方親你一個地方,你要猜是哪裡。',
+      '說出對方身上三個你最喜歡的部位,每說一個就親一下。',
+      '公主抱(或背)對方走三步。',
+      '擺出你覺得最性感的表情,拍下來設成對方的來電照片。',
+      '脫掉一件身上的衣物(襪子也算)。',
+      '從對方手臂內側,一路親到手腕。',
+      '請對方指定一個姿勢,你要擺 20 秒不能動。',
+      '用最嗲的聲音說「我是你的專屬寶貝」三次。',
+      '咬耳朵低聲說:「今晚我想對你做的一件事」(尺度自己拿捏)。',
+      '閉眼讓對方餵你吃東西,過程不准偷看。',
+      '模仿對方最害羞時的樣子 20 秒。',
+      '接吻 10 秒,誰先笑場誰輸。',
+      '用愛慕的眼神,輕輕摸對方的臉或頭髮 1 分鐘。',
+      '讓對方在你背上用手指寫字,你來猜寫了什麼。',
+      '放一首歌,貼著對方慢舞 30 秒。',
+      '把對方的手放在你心口 10 秒,說:「它為你跳這麼快。」',
+      '用嘴唇輕輕碰對方的耳垂 5 秒。',
+      '撒嬌求抱抱,直到對方答應為止。',
+      '讓對方幫你選一個搞笑造型,穿 5 分鐘並拍照。',
+      '蒙眼被對方牽著走一圈,對方可以偷親你三下。',
+      '說出三個你喜歡的親密動作,並各示範一次。',
+      '單膝跪地,用搞笑版本向對方求婚,對方要給回應。',
+      '親對方一個地方,對方可以指定位置(對方自己負責底線)。'
+    ]
+  };
+
+  // ===== 小工具 =====
+  function colorOf(n) {
+    if (n === 0) return 'green';
+    return RED_NUMS.indexOf(n) >= 0 ? 'red' : 'black';
+  }
+  function other(r) { return r === 'pink' ? 'blue' : 'pink'; }
+  function rand(n) { return Math.floor(Math.random() * n); }
+  function fail(msg) { return { ok: false, error: msg }; }
+  function validRole(r) { return r === 'pink' || r === 'blue'; }
+  function cleanName(s) {
+    return String(s || '').replace(/[\r\n\t]/g, ' ').trim().slice(0, 8);
+  }
+  function isInt037(n) { return typeof n === 'number' && isFinite(n) && Math.floor(n) === n && n >= 0 && n <= 36; }
+
+  function newRoom(code) {
+    return {
+      code: code, v: 1, phase: 'lobby', step: 'guess', turn: 'pink', round: 1, guess: null,
+      players: { pink: null, blue: null },
+      poison: { pink: null, blue: null },
+      result: null, card: null,
+      ack: { pink: false, blue: false },
+      rerolled: false,
+      used: { truth: [], dare: [] },
+      made: Date.now()
+    };
+  }
+
+  // 給前端看的版本:絕對不含對方(或自己)的毒藥號碼
+  function viewOf(room, role) {
+    var pl = {};
+    ['pink', 'blue'].forEach(function (r) {
+      pl[r] = room.players[r] ? { name: room.players[r].name } : null;
+    });
+    return {
+      code: room.code, v: room.v, phase: room.phase, step: room.step, turn: room.turn,
+      round: room.round, guess: room.guess, rerolled: room.rerolled,
+      players: pl, me: role,
+      poisonDone: { pink: !!room.poison.pink, blue: !!room.poison.blue },
+      result: room.result, card: room.card, ack: room.ack
+    };
+  }
+
+  function commit(room, io, role) {
+    room.v = (room.v || 0) + 1;
+    io.save(room.code, room);
+    return { ok: true, view: viewOf(room, role) };
+  }
+
+  function makeCode(io) {
+    for (var i = 0; i < 60; i++) {
+      var c = String(1000 + rand(9000));
+      if (!io.load(c)) return c;
+    }
+    return null;
+  }
+
+  function pickCard(room, deck, type, excludeIdx) {
+    var list = deck[type];
+    var used = room.used[type] || [];
+    var avail = [], i;
+    for (i = 0; i < list.length; i++) {
+      if (used.indexOf(i) < 0 && i !== excludeIdx) avail.push(i);
+    }
+    if (!avail.length) {
+      used = [];
+      for (i = 0; i < list.length; i++) if (i !== excludeIdx) avail.push(i);
+    }
+    var idx = avail[rand(avail.length)];
+    used.push(idx);
+    room.used[type] = used;
+    return { type: type, text: list[idx], idx: idx };
+  }
+
+  function deckOk(d) {
+    return d && d.truth && d.truth.length && d.dare && d.dare.length;
+  }
+
+  // ===== 主要入口 =====
+  function handle(p, io, deck) {
+    deck = deckOk(deck) ? deck : DECK;
+    var a = p.action, role = p.role, token = String(p.token || '');
+
+    if (a === 'create') {
+      if (!validRole(role)) return fail('請先選粉色或藍色');
+      var nm = cleanName(p.name);
+      if (!nm) return fail('請輸入綽號');
+      var newCode = makeCode(io);
+      if (!newCode) return fail('房間太多了,等一下再試');
+      var r0 = newRoom(newCode);
+      r0.players[role] = { name: nm, token: token };
+      return commit(r0, io, role);
+    }
+
+    var code = String(p.code || '').trim();
+    if (!code) return fail('請輸入房號');
+    var room = io.load(code);
+    if (!room) return fail('找不到這個房號');
+    if (!validRole(role)) return fail('身分不對');
+
+    if (a === 'join') {
+      var jn = cleanName(p.name);
+      if (!jn) return fail('請輸入綽號');
+      var slot = room.players[role];
+      if (slot && slot.token !== token) return fail('這個顏色已經有人了,換另一個顏色吧');
+      room.players[role] = { name: jn, token: token };
+      if (room.players.pink && room.players.blue && room.phase === 'lobby') room.phase = 'poison';
+      return commit(room, io, role);
+    }
+
+    var me = room.players[role];
+    if (!me || me.token !== token) return fail('你不在這個房間');
+
+    if (a === 'get') return { ok: true, view: viewOf(room, role) };
+
+    if (a === 'poison') {
+      if (room.phase !== 'poison') return fail('現在不能選毒藥');
+      var nums = (p.nums || []).map(Number);
+      if (nums.length !== 2 || !isInt037(nums[0]) || !isInt037(nums[1]) || nums[0] === nums[1]) {
+        return fail('請選兩個不同的號碼(0~36)');
+      }
+      room.poison[role] = nums;
+      if (room.poison.pink && room.poison.blue) {
+        room.phase = 'play'; room.step = 'guess';
+        room.turn = rand(2) ? 'pink' : 'blue';
+        room.round = 1; room.guess = null; room.result = null; room.card = null;
+        room.ack = { pink: false, blue: false };
+      }
+      return commit(room, io, role);
+    }
+
+    if (a === 'guess') {
+      if (room.phase !== 'play' || room.step !== 'guess') return fail('現在不是猜顏色的時間');
+      if (room.turn !== role) return fail('還沒輪到你');
+      if (p.color !== 'red' && p.color !== 'black') return fail('只能猜紅色或黑色');
+      room.guess = p.color; room.step = 'spin';
+      return commit(room, io, role);
+    }
+
+    if (a === 'spin') {
+      if (room.phase !== 'play' || room.step !== 'spin') return fail('現在不是輸入號碼的時間');
+      var n = Number(p.number);
+      if (!isInt037(n)) return fail('號碼要是 0~36');
+      var c = colorOf(n);
+      var correct = c === room.guess;
+      var owner = other(room.turn);
+      var hit = room.poison[owner].indexOf(n) >= 0;
+      var drink = hit && !correct;
+      room.result = {
+        number: n, color: c, correct: correct, hit: hit, drink: drink,
+        guesser: room.turn, guess: room.guess, owner: owner
+      };
+      room.card = pickCard(room, deck, rand(2) ? 'truth' : 'dare', -1);
+      room.ack = { pink: false, blue: false };
+      room.rerolled = false;
+      room.step = 'card';
+      return commit(room, io, role);
+    }
+
+    if (a === 'reroll') {
+      if (room.phase !== 'play' || room.step !== 'card') return fail('現在不能換題');
+      if (room.rerolled) return fail('這回合已經換過一次了');
+      var type = rand(2) ? 'truth' : 'dare';
+      room.card = pickCard(room, deck, type, type === room.card.type ? room.card.idx : -1);
+      room.ack = { pink: false, blue: false };
+      room.rerolled = true;
+      return commit(room, io, role);
+    }
+
+    if (a === 'ack') {
+      if (room.phase !== 'play' || room.step !== 'card') return fail('現在不能按完成');
+      room.ack[role] = true;
+      if (room.ack.pink && room.ack.blue) {
+        room.turn = other(room.turn);
+        room.round += 1;
+        room.step = 'guess';
+        room.guess = null; room.result = null; room.card = null;
+        room.ack = { pink: false, blue: false };
+      }
+      return commit(room, io, role);
+    }
+
+    if (a === 'restart') {
+      if (!(room.players.pink && room.players.blue)) return fail('另一半還沒加入');
+      room.phase = 'poison'; room.step = 'guess'; room.round = 1;
+      room.poison = { pink: null, blue: null };
+      room.guess = null; room.result = null; room.card = null;
+      room.ack = { pink: false, blue: false }; room.rerolled = false;
+      room.used = { truth: [], dare: [] };
+      return commit(room, io, role);
+    }
+
+    return fail('不認識的動作');
+  }
+
+  var api = { handle: handle, DECK: DECK, colorOf: colorOf, RED_NUMS: RED_NUMS };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  return api;
+})();
+</script>
+<script>
+// ======================================================================
+//  ★ 設定:把 Google Apps Script「網頁應用程式」的網址貼在下面 ★
+// ======================================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbxxE5QDwoofBQpSd0RLCf95Kha9l-S5oWZkFKr3OUhnCTsd4yqm9zbe5rT7Ah5gWqZQ/exec';
+
+const LOCAL = !API_URL;
+const store = LOCAL ? sessionStorage : localStorage;
+const $app = document.getElementById('app');
+
+let S = {};
+try { S = JSON.parse(store.getItem('crayon-session') || '{}'); } catch (e) { S = {}; }
+let view = null, busy = false, booted = false;
+const ui = { role: S.role || '', name: S.name || '', joinCode: '', picks: [], repick: false, spin: null };
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const colorName = { red: '紅色', black: '黑色', green: '綠色' };
+const roleName = { pink: '粉色', blue: '藍色' };
+const other = r => r === 'pink' ? 'blue' : 'pink';
+const saveSession = () => store.setItem('crayon-session', JSON.stringify(S));
+const clearSession = () => { S = {}; store.removeItem('crayon-session'); view = null; ui.picks = []; ui.spin = null; ui.repick = false; };
+const rid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+// ---------- 連線層 ----------
+const localIO = {
+  load(c) { try { return (JSON.parse(localStorage.getItem('crayon-rooms') || '{}'))[c] || null; } catch (e) { return null; } },
+  save(c, r) { let all = {}; try { all = JSON.parse(localStorage.getItem('crayon-rooms') || '{}'); } catch (e) {} all[c] = r; localStorage.setItem('crayon-rooms', JSON.stringify(all)); }
+};
+async function send(p) {
+  if (LOCAL) return Engine.handle(p, localIO, null);
+  if (p.action === 'get') {
+    const qs = new URLSearchParams(p).toString();
+    const res = await fetch(API_URL + (API_URL.includes('?') ? '&' : '?') + qs);
+    return res.json();
+  }
+  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) });
+  return res.json();
+}
+async function call(action, extra) {
+  if (busy) return null;
+  busy = true;
+  try {
+    const p = Object.assign({ action, code: S.code, role: S.role, token: S.token }, extra || {});
+    const r = await send(p);
+    if (!r.ok) { toast(r.error || '出了點小問題'); return r; }
+    view = r.view; render();
+    return r;
+  } catch (e) {
+    toast('網路好像不太穩,再按一次試試');
+    return null;
+  } finally { busy = false; }
+}
+async function tick() {
+  if (!S.code || busy) return;
+  try {
+    const r = await send({ action: 'get', code: S.code, role: S.role, token: S.token });
+    if (r.ok) { if (!view || r.view.v !== view.v) { view = r.view; render(); } }
+    else if (/找不到|不在這個房間/.test(r.error || '')) { clearSession(); render(); toast('這個房間已經結束了'); }
+  } catch (e) { /* 網路不穩就等下一輪 */ }
+}
+window.addEventListener('storage', e => { if (LOCAL && e.key === 'crayon-rooms') tick(); });
+setInterval(tick, LOCAL ? 700 : 1600);
+
+let toastT;
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ---------- 小圖 ----------
+function face(role) {
+  const c = role === 'pink' ? '#ff8fb8' : '#6bb8f2';
+  const extra = role === 'pink'
+    ? '<circle cx="12" cy="14" r="7" fill="#ff8fb8"/><circle cx="52" cy="14" r="7" fill="#ff8fb8"/>'
+    : '<path d="M26 10c2-8 10-8 12 0" fill="none" stroke="#4a3b32" stroke-width="4" stroke-linecap="round"/>';
+  return `<svg viewBox="0 0 64 64" aria-hidden="true"><g filter="url(#wob)" stroke="#4a3b32" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">${extra}<circle cx="32" cy="35" r="22" fill="${c}"/><circle cx="24" cy="32" r="2.6" fill="#4a3b32" stroke="none"/><circle cx="40" cy="32" r="2.6" fill="#4a3b32" stroke="none"/><path d="M24 42q8 7 16 0" fill="none"/><circle cx="18" cy="40" r="3.4" fill="#fff" opacity=".7" stroke="none"/><circle cx="46" cy="40" r="3.4" fill="#fff" opacity=".7" stroke="none"/></g></svg>`;
+}
+function wheel(cls) {
+  const n = 12, cx = 100, cy = 100, R = 88, r = 34; let s = '';
+  const pt = (rad, a) => [cx + rad * Math.cos(a), cy + rad * Math.sin(a)].map(x => x.toFixed(1)).join(' ');
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * 2 * Math.PI - Math.PI / 2, a1 = ((i + 1) / n) * 2 * Math.PI - Math.PI / 2;
+    const col = i === 0 ? '#5fbf62' : (i % 2 ? '#454545' : '#ee4b4b');
+    s += `<path d="M${pt(r, a0)} L${pt(R, a0)} A${R} ${R} 0 0 1 ${pt(R, a1)} L${pt(r, a1)} A${r} ${r} 0 0 0 ${pt(r, a0)}Z" fill="${col}"/>`;
+  }
+  return `<svg class="wheel ${cls || ''}" viewBox="0 0 200 200" aria-hidden="true"><g filter="url(#wob)" stroke="#4a3b32" stroke-width="4" stroke-linejoin="round"><circle cx="100" cy="100" r="95" fill="#ffd84d"/>${s}<circle cx="100" cy="100" r="30" fill="#ffd84d"/><circle cx="100" cy="100" r="8" fill="#fff"/></g><circle cx="152" cy="50" r="8" fill="#fff" stroke="#4a3b32" stroke-width="3.5"/></svg>`;
+}
+function numGrid(selected, act) {
+  let h = `<div class="nums">`;
+  for (let n = 0; n <= 36; n++) {
+    const c = Engine.colorOf(n);
+    h += `<button class="num ${c} ${n === 0 ? 'zero' : ''} ${selected.includes(n) ? 'sel' : ''}" data-act="${act}" data-n="${n}" aria-label="${n}號" aria-pressed="${selected.includes(n)}">${n}</button>`;
+  }
+  return h + `</div>`;
+}
+function chips(v) {
+  const t = v.phase === 'play' ? v.turn : null;
+  return `<div class="chips">${['pink', 'blue'].map(r => {
+    const p = v.players[r];
+    return `<div class="chip ${r} ${t === r ? 'on' : ''}">${face(r)}<span>${p ? esc(p.name) : '等待中…'}</span>${v.me === r ? '<i>我</i>' : ''}</div>`;
+  }).join('')}</div>`;
+}
+const nm = (v, r) => esc(v.players[r] ? v.players[r].name : roleName[r]);
+
+// ---------- 畫面 ----------
+function screenHome() {
+  return `<div class="stack center">
+    <div>
+      ${wheel('')}
+      <h1 class="title" aria-label="毒藥輪盤"><span>毒</span><span>藥</span><span>輪</span><span>盤</span></h1>
+      <p class="sub">真心話大冒險・情侶版</p>
+    </div>
+    <div class="row">
+      ${['pink', 'blue'].map(r => `<button class="crayon ${r} pick ${ui.role === r ? 'on' : ''}" data-act="role" data-r="${r}" aria-pressed="${ui.role === r}">${face(r)}<span>${roleName[r]}</span><span class="tick">${ui.role === r ? '★ 我是這隊' : ''}</span></button>`).join('')}
+    </div>
+    <label class="field crayon paper"><input id="name" maxlength="8" placeholder="輸入你的綽號" value="${esc(ui.name)}" autocomplete="off"></label>
+    <button class="crayon orange" data-act="create">開新房間</button>
+    <div class="small">或是輸入另一半給你的房號</div>
+    <div class="row" style="align-items:stretch">
+      <label class="field crayon paper" style="flex:1.4"><input id="joincode" inputmode="numeric" maxlength="4" placeholder="4位數房號" value="${esc(ui.joinCode)}" autocomplete="off"></label>
+      <button class="crayon green" data-act="join" style="flex:1">加入</button>
+    </div>
+    <p class="small">限成人遊玩。喝的東西請適量,有人不舒服就喊停,換成白開水。</p>
+  </div>`;
+}
+
+function screenLobby(v) {
+  const o = other(v.me);
+  return `<div class="stack center">
+    ${chips(v)}
+    <div class="crayon yellow"><p>房號</p><div class="big-code">${esc(v.code)}</div><p class="small" style="opacity:1">把房號傳給另一半,請他選${roleName[o]}加入</p></div>
+    <button class="crayon paper" data-act="copy" style="font-size:18px">複製房號</button>
+    <div class="bounce">${face(o)}</div>
+    <p>等 ${roleName[o]} 加入中…</p>
+    <div class="foot"><button class="link" data-act="leave">離開房間</button></div>
+  </div>`;
+}
+
+function screenPoison(v) {
+  const o = other(v.me);
+  if (v.poisonDone[v.me] && !ui.repick) {
+    return `<div class="stack center">
+      ${chips(v)}
+      <div class="crayon green"><h2>已經記下囉!</h2><p>你的毒藥號碼只有系統知道,藏好秘密~</p></div>
+      ${v.poisonDone[o] ? '<p>對方好了,馬上開始!</p>' : `<div class="bounce">${face(o)}</div><p>等 ${nm(v, o)} 選好毒藥…</p>`}
+      ${v.poisonDone[o] ? '' : '<button class="link" data-act="repick">我想重選</button>'}
+      <div class="foot"><button class="link" data-act="leave">離開房間</button></div>
+    </div>`;
+  }
+  const ready = ui.picks.length === 2;
+  return `<div class="stack">
+    ${chips(v)}
+    <div class="crayon orange center"><h2>選兩個毒藥號碼</h2>
+      <p style="font-size:16px">把你準備的難喝飲料,倒進輪盤上那兩個號碼的杯子。<br>飲料<b>顏色不能變</b>,對方才看不出來!(對方看不到你選哪兩個)</p></div>
+    ${numGrid(ui.picks, 'pickp')}
+    <p class="center">已選 ${ui.picks.length} / 2${ui.picks.length ? '：' + ui.picks.join('、') : ''}</p>
+    <button class="crayon green" data-act="poison" ${ready ? '' : 'disabled'}>就這兩個,下一步</button>
+  </div>`;
+}
+
+function screenPlay(v) {
+  const me = v.me, t = v.turn, mine = t === me;
+  let body = '';
+  if (v.step === 'guess') {
+    body = mine ? `
+      <div class="crayon yellow center pop"><h2>輪到你啦!</h2><p>猜猜珠子會停在哪個顏色?</p></div>
+      <div class="row">
+        <button class="crayon red" data-act="guess" data-c="red" style="font-size:30px;padding:26px 10px">紅色</button>
+        <button class="crayon black" data-act="guess" data-c="black" style="font-size:30px;padding:26px 10px">黑色</button>
+      </div>` : `
+      <div class="crayon paper center"><h2>${nm(v, t)} 正在猜顏色…</h2></div>
+      ${wheel('big spin')}`;
+  } else if (v.step === 'spin') {
+    body = `
+      <div class="crayon yellow center pop"><p>${nm(v, t)} 猜了</p><h2 style="font-size:34px">${colorName[v.guess]}</h2></div>
+      <div class="crayon paper center"><p>現在轉實體輪盤、丟珠子!<br>珠子停下來後,<b>任一人</b>選號碼</p></div>
+      ${numGrid(ui.spin == null ? [] : [ui.spin], 'pickn')}
+      <button class="crayon orange" data-act="spin" ${ui.spin == null ? 'disabled' : ''}>${ui.spin == null ? '先點珠子停的號碼' : '珠子停在 ' + ui.spin + ' 號!'}</button>`;
+  } else {
+    body = screenCard(v);
+  }
+  return `<div class="stack">
+    ${chips(v)}
+    <div class="round">第 ${v.round} 回合</div>
+    ${body}
+    <div class="foot"><button class="link" data-act="restart">重選毒藥重玩</button><button class="link" data-act="leave">離開房間</button></div>
+  </div>`;
+}
+
+function screenCard(v) {
+  const r = v.result, c = v.card, me = v.me;
+  const g = nm(v, r.guesser), ow = nm(v, r.owner);
+  let verdict;
+  if (r.drink) verdict = `<div class="crayon red center shake"><h2>☠ 中毒!</h2><p>${g} 猜錯了,又踩到 ${ow} 的毒藥<br>請喝掉 <b>${r.number} 號杯</b></p></div>`;
+  else if (r.hit && r.correct) verdict = `<div class="crayon green center pop"><h2>逃過一劫!</h2><p>${r.number} 號杯是 ${ow} 的毒藥,<br>但 ${g} 猜對顏色,不用喝</p></div>`;
+  else if (r.color === 'green') verdict = `<div class="crayon paper center pop"><h2>綠色 0!</h2><p>這次一定猜錯,但這杯是安全的</p></div>`;
+  else if (r.correct) verdict = `<div class="crayon green center pop"><h2>${g} 猜對了!</h2><p>這杯很安全,不用喝</p></div>`;
+  else verdict = `<div class="crayon paper center pop"><h2>${g} 猜錯了…</h2><p>不過這杯沒毒,不用喝</p></div>`;
+  const isT = c.type === 'truth';
+  const done = v.ack[me];
+  return `
+    <div class="center"><div class="ball ${r.color} pop">${r.number}</div></div>
+    ${verdict}
+    <div class="crayon ${isT ? 'pink' : 'blue'} paper center pop" style="--fill:${isT ? '#ffe3ef' : '#e0f1ff'}">
+      <span class="tag">${isT ? '真心話' : '大冒險'}</span>
+      <p class="card-text">${esc(c.text)}</p>
+      <p class="small" style="opacity:1">不管猜對猜錯,<b>兩個人都要完成</b>喔!</p>
+    </div>
+    <div class="dots"><span class="dot pink ${v.ack.pink ? 'done' : ''}">${nm(v, 'pink')} ${v.ack.pink ? '✓' : '…'}</span><span class="dot blue ${v.ack.blue ? 'done' : ''}">${nm(v, 'blue')} ${v.ack.blue ? '✓' : '…'}</span></div>
+    <button class="crayon ${done ? 'paper' : 'green'}" data-act="ack" ${done ? 'disabled' : ''}>${done ? '等另一半完成…' : '我完成了!'}</button>
+    ${v.rerolled ? '' : '<div class="center"><button class="link" data-act="reroll">這題太超過,換一題(每回合一次)</button></div>'}`;
+}
+
+function render() {
+  if (!view) { $app.innerHTML = screenHome(); return; }
+  if (view.phase !== 'poison') { ui.picks = []; ui.repick = false; }
+  if (view.step !== 'spin') ui.spin = null;
+  const h = view.phase === 'lobby' ? screenLobby(view) : view.phase === 'poison' ? screenPoison(view) : screenPlay(view);
+  $app.innerHTML = h;
+}
+
+// ---------- 事件 ----------
+document.addEventListener('input', e => {
+  if (e.target.id === 'name') ui.name = e.target.value;
+  if (e.target.id === 'joincode') { ui.joinCode = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = ui.joinCode; }
+});
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+  const a = el.dataset.act;
+  if (a === 'role') { ui.role = el.dataset.r; render(); }
+  else if (a === 'create' || a === 'join') {
+    if (!ui.role) return toast('先點一個顏色:粉色或藍色');
+    if (!ui.name.trim()) return toast('先輸入你的綽號');
+    if (a === 'join' && ui.joinCode.length !== 4) return toast('房號是 4 位數字');
+    S = { role: ui.role, name: ui.name.trim(), token: rid(), code: a === 'join' ? ui.joinCode : undefined };
+    const r = await call(a, { name: S.name, role: S.role, token: S.token, code: S.code });
+    if (r && r.ok) { S.code = r.view.code; saveSession(); render(); }
+    else { S = {}; }
+  }
+  else if (a === 'copy') { try { await navigator.clipboard.writeText(view.code); toast('房號已複製'); } catch (err) { toast('房號是 ' + view.code); } }
+  else if (a === 'pickp') {
+    const n = +el.dataset.n, i = ui.picks.indexOf(n);
+    if (i >= 0) ui.picks.splice(i, 1); else if (ui.picks.length < 2) ui.picks.push(n); else toast('最多選兩個,先點掉一個再換');
+    render();
+  }
+  else if (a === 'poison') { const r = await call('poison', { nums: ui.picks }); if (r && r.ok) { ui.repick = false; render(); } }
+  else if (a === 'repick') { ui.repick = true; ui.picks = []; render(); }
+  else if (a === 'guess') call('guess', { color: el.dataset.c });
+  else if (a === 'pickn') { ui.spin = +el.dataset.n; render(); }
+  else if (a === 'spin') call('spin', { number: ui.spin });
+  else if (a === 'ack') call('ack');
+  else if (a === 'reroll') call('reroll');
+  else if (a === 'restart') { if (confirm('要重新選毒藥、從第 1 回合開始嗎?')) call('restart'); }
+  else if (a === 'leave') { if (confirm('要離開這個房間嗎?')) { clearSession(); render(); } }
+});
+
+(async function boot() {
+  if (S.code && S.token) { await tick(); }
+  booted = true; render();
+})();
+</script>
+</body>
+</html>
